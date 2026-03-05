@@ -1,5 +1,26 @@
 // ─── BetLens PWA — app.js ────────────────────────────────────────────────────
 
+// ─── Backend config ───────────────────────────────────────────────────────────
+
+const BACKEND = "https://betlens-backend-production.up.railway.app";
+
+async function apiCall(path, method = "GET", body = null) {
+  const token = localStorage.getItem("betlensToken");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = "Bearer " + token;
+  const resp = await fetch(BACKEND + path, {
+    method, headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+function isLoggedIn() {
+  return !!localStorage.getItem("betlensToken");
+}
+
 // ─── IndexedDB ───────────────────────────────────────────────────────────────
 
 const DB_NAME = "betlens", DB_VERSION = 1, STORE = "bets";
@@ -541,6 +562,21 @@ async function init() {
     showToast("Data cleared");
   });
 
+  // Account info + logout
+  const emailEl = document.getElementById("accountEmail");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const email = localStorage.getItem("betlensEmail");
+  if (emailEl) emailEl.textContent = email || "Not logged in";
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      if (!confirm("Log out of BetLens?")) return;
+      localStorage.removeItem("betlensToken");
+      localStorage.removeItem("betlensEmail");
+      localStorage.removeItem("betlensLastSync");
+      window.location.reload();
+    });
+  }
+
   // Sync page setup
   const bmInstr = document.getElementById("bmInstructions");
   const bmWrap  = document.getElementById("bmBtnWrap");
@@ -567,35 +603,112 @@ async function init() {
   }
 
 
-  // Check for sync hash first
-  const synced = await processSyncHash();
+  // Init login overlay
+  initLoginOverlay();
 
-  // Load from IndexedDB
-  allBets = await loadBets();
-
-  if (allBets.length === 0 && !synced) {
-    document.getElementById("emptyState").style.display = "flex";
-    document.getElementById("dashContent").style.display = "none";
-  } else {
-    document.getElementById("emptyState").style.display = "none";
-    document.getElementById("dashContent").style.display = "block";
-    // Default to 30 days
-    const to = new Date(); to.setHours(23,59,59,999);
-    const from = new Date(); from.setDate(from.getDate() - 30); from.setHours(0,0,0,0);
-    document.querySelector(".qf[data-range='30d']")?.classList.add("active");
-    applyFilter(from, to);
+  // If not logged in, show login screen
+  if (!isLoggedIn()) {
+    document.getElementById("loginOverlay").classList.add("show");
+    return;
   }
 
-  // Last sync time
-  const lastSync = localStorage.getItem("betlensLastSync");
-  if (lastSync) {
-    const mins = Math.round((Date.now() - parseInt(lastSync)) / 60000);
-    document.getElementById("lastSync").textContent =
-      mins < 1 ? "Synced just now" : mins < 60 ? `Synced ${mins}m ago` : `Synced ${Math.round(mins/60)}h ago`;
-  }
+  // Logged in — load bets from backend
+  await loadBetsFromBackend();
+}
 
-  // Save sync time when bets are imported
-  if (synced) localStorage.setItem("betlensLastSync", Date.now());
+// ─── Login overlay ────────────────────────────────────────────────────────────
+
+let loginMode = true; // true = login, false = register
+
+function initLoginOverlay() {
+  const overlay   = document.getElementById("loginOverlay");
+  const loginBtn  = document.getElementById("loginBtn");
+  const toggleBtn = document.getElementById("loginToggle");
+  const errEl     = document.getElementById("loginErr");
+  const subEl     = document.getElementById("loginSub");
+
+  if (!loginBtn) return;
+
+  toggleBtn.addEventListener("click", () => {
+    loginMode = !loginMode;
+    loginBtn.textContent  = loginMode ? "Log In" : "Create Account";
+    subEl.textContent     = loginMode ? "Log in to see your bet stats" : "Create a free BetLens account";
+    toggleBtn.innerHTML   = loginMode
+      ? `Don't have an account? <span>Sign up</span>`
+      : `Already have an account? <span>Log in</span>`;
+    errEl.textContent = "";
+  });
+
+  loginBtn.addEventListener("click", async () => {
+    const email    = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    errEl.textContent = "";
+
+    if (!email || !password) { errEl.textContent = "Enter email and password"; return; }
+
+    loginBtn.textContent = "Please wait…";
+    loginBtn.disabled = true;
+
+    try {
+      const path = loginMode ? "/auth/login" : "/auth/register";
+      const data = await apiCall(path, "POST", { email, password });
+      localStorage.setItem("betlensToken", data.token);
+      localStorage.setItem("betlensEmail", data.email);
+      overlay.classList.remove("show");
+      await loadBetsFromBackend();
+    } catch (err) {
+      errEl.textContent = err.message;
+      loginBtn.textContent = loginMode ? "Log In" : "Create Account";
+      loginBtn.disabled = false;
+    }
+  });
+}
+
+// ─── Load bets from backend ───────────────────────────────────────────────────
+
+async function loadBetsFromBackend() {
+  const email = localStorage.getItem("betlensEmail") || "";
+  document.getElementById("lastSync").textContent = email;
+
+  try {
+    document.getElementById("lastSync").textContent = "Loading…";
+    const data = await apiCall("/bets");
+
+    // Also merge any locally cached bets (from sync.html)
+    const localBets = await loadBets();
+    const betMap = {};
+    for (const b of [...(data.bets || []), ...localBets]) {
+      betMap[b.orderId] = b;
+    }
+    allBets = Object.values(betMap);
+
+    // If we had local bets, push them to backend too
+    if (localBets.length > 0) {
+      apiCall("/bets/sync", "POST", { bets: localBets }).catch(() => {});
+    }
+
+    const lastSync = localStorage.getItem("betlensLastSync");
+    const mins = lastSync ? Math.round((Date.now() - parseInt(lastSync)) / 60000) : null;
+    document.getElementById("lastSync").textContent = mins === null ? email
+      : mins < 1 ? `${email} · just now`
+      : mins < 60 ? `${email} · ${mins}m ago`
+      : `${email} · ${Math.round(mins/60)}h ago`;
+
+    if (allBets.length === 0) {
+      document.getElementById("emptyState").style.display = "flex";
+      document.getElementById("dashContent").style.display = "none";
+    } else {
+      document.getElementById("emptyState").style.display = "none";
+      document.getElementById("dashContent").style.display = "block";
+      const to = new Date(); to.setHours(23,59,59,999);
+      const from = new Date(); from.setDate(from.getDate() - 30); from.setHours(0,0,0,0);
+      document.querySelector(".qf[data-range='30d']")?.classList.add("active");
+      applyFilter(from, to);
+    }
+  } catch (err) {
+    document.getElementById("lastSync").textContent = "Load failed";
+    showToast("❌ Could not load bets: " + err.message);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);

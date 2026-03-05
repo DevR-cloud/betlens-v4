@@ -320,6 +320,64 @@ canvas#sparkline {
   font-family: 'JetBrains Mono', monospace;
 }
 
+/* ── Login overlay ── */
+.login-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 500;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+.login-overlay.show { display: flex; }
+.login-card {
+  width: 100%; max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 24px;
+}
+.login-logo {
+  font-size: 22px; font-weight: 800;
+  color: var(--green); text-align: center;
+  margin-bottom: 4px; letter-spacing: -0.5px;
+}
+.login-sub {
+  font-size: 12px; color: var(--muted);
+  text-align: center; margin-bottom: 24px;
+  line-height: 1.6;
+}
+.login-input {
+  width: 100%; padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text);
+  font-size: 14px; margin-bottom: 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  outline: none; display: block;
+}
+.login-input:focus { border-color: var(--green); }
+.login-btn {
+  width: 100%; padding: 13px;
+  background: var(--green); border: none;
+  border-radius: 10px; color: #000;
+  font-size: 15px; font-weight: 700;
+  cursor: pointer; margin-bottom: 12px;
+  font-family: 'Space Grotesk', sans-serif;
+}
+.login-err {
+  font-size: 12px; color: var(--red);
+  text-align: center; margin-bottom: 10px;
+  min-height: 18px; font-family: 'JetBrains Mono', monospace;
+}
+.login-toggle {
+  font-size: 12px; color: var(--muted);
+  text-align: center; cursor: pointer;
+}
+.login-toggle span { color: var(--green); text-decoration: underline; }
+
 /* ── Empty state ── */
 #emptyState {
   display: flex;
@@ -727,6 +785,12 @@ canvas#sparkline {
         </div>
 
         <div class="setup-card">
+          <div class="setup-card-title"><span>👤</span> Account</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px" id="accountEmail">Loading…</p>
+          <button class="danger-btn" id="logoutBtn" style="margin-bottom:10px">Log out</button>
+        </div>
+
+        <div class="setup-card">
           <div class="setup-card-title"><span>🗑️</span> Clear Data</div>
           <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Remove all stored bet data from this device</p>
           <button class="danger-btn" id="clearBtn">Clear all data</button>
@@ -738,6 +802,19 @@ canvas#sparkline {
   </div><!-- /scroll area -->
 
 </div><!-- /app-shell -->
+
+<!-- Login overlay -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo">BetLens</div>
+    <div class="login-sub" id="loginSub">Log in to see your bet stats</div>
+    <div class="login-err" id="loginErr"></div>
+    <input class="login-input" type="email" id="loginEmail" placeholder="Email address" autocomplete="email">
+    <input class="login-input" type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+    <button class="login-btn" id="loginBtn">Log In</button>
+    <div class="login-toggle" id="loginToggle">Don't have an account? <span>Sign up</span></div>
+  </div>
+</div>
 
 <!-- Bottom nav -->
 <nav class="bottom-nav">
