@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BetLens Sync</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #0a0b0d;
+  color: #e8eaf0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.card {
+  background: #111318;
+  border: 1px solid #22262f;
+  border-radius: 20px;
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+.logo {
+  font-size: 28px;
+  font-weight: 800;
+  color: #00e5a0;
+  margin-bottom: 6px;
+  letter-spacing: -1px;
+}
+.subtitle {
+  font-size: 13px;
+  color: #50556a;
+  margin-bottom: 28px;
+}
+.status-box {
+  background: #181b22;
+  border: 1px solid #22262f;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.status-icon { font-size: 32px; }
+.status-text {
+  font-size: 14px;
+  color: #e8eaf0;
+  font-weight: 600;
+}
+.status-sub {
+  font-size: 12px;
+  color: #50556a;
+}
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: #22262f;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  display: none;
+}
+.progress-fill {
+  height: 100%;
+  background: #00e5a0;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 10px;
+}
+.btn-primary { background: #00e5a0; color: #000; }
+.btn-primary:active { opacity: 0.85; }
+.btn-primary:disabled { background: #22262f; color: #50556a; cursor: not-allowed; }
+.btn-secondary {
+  background: transparent;
+  border: 1px solid #22262f;
+  color: #50556a;
+  font-size: 13px;
+  padding: 10px;
+}
+.note {
+  font-size: 11px;
+  color: #50556a;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+.error-box {
+  background: rgba(255,77,106,0.1);
+  border: 1px solid rgba(255,77,106,0.3);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12px;
+  color: #ff4d6a;
+  margin-bottom: 16px;
+  display: none;
+  text-align: left;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">BetLens</div>
+  <div class="subtitle">Sync your SportyBet history</div>
+
+  <div class="status-box" id="statusBox">
+    <div class="status-icon" id="statusIcon">📡</div>
+    <div class="status-text" id="statusText">Ready to sync</div>
+    <div class="status-sub" id="statusSub">Make sure you're logged into SportyBet first</div>
+  </div>
+
+  <div class="progress-bar" id="progressBar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <button class="btn btn-primary" id="syncBtn">⚡ Sync Now</button>
+  <button class="btn btn-secondary" id="backBtn">← Back to BetLens</button>
+
+  <p class="note">This page fetches your bets directly from SportyBet.<br>You must be logged into SportyBet in this browser.</p>
+</div>
+
+<script>
+const statusIcon = document.getElementById("statusIcon");
+const statusText = document.getElementById("statusText");
+const statusSub  = document.getElementById("statusSub");
+const progressBar  = document.getElementById("progressBar");
+const progressFill = document.getElementById("progressFill");
+const errorBox   = document.getElementById("errorBox");
+const syncBtn    = document.getElementById("syncBtn");
+const backBtn    = document.getElementById("backBtn");
+
+function setStatus(icon, text, sub) {
+  statusIcon.textContent = icon;
+  statusText.textContent = text;
+  statusSub.textContent  = sub || "";
+}
+
+function setProgress(pct) {
+  progressBar.style.display = "block";
+  progressFill.style.width  = pct + "%";
+}
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.style.display = "block";
+}
+
+backBtn.addEventListener("click", () => {
+  window.location.href = "/";
+});
+
+syncBtn.addEventListener("click", async () => {
+  syncBtn.disabled = true;
+  errorBox.style.display = "none";
+  setStatus("⏳", "Connecting to SportyBet…", "Fetching your bet history");
+  setProgress(5);
+
+  try {
+    const allBets = [];
+    const PAGE_SIZE = 50;
+
+    for (const isSettled of [10, 0]) {
+      let pageNo = 1, totalPages = 1;
+
+      while (pageNo <= totalPages) {
+        const url = `https://www.sportybet.com/api/ng/orders/order/v2/realbetlist?isSettled=${isSettled}&pageSize=${PAGE_SIZE}&pageNo=${pageNo}&_t=${Date.now()}`;
+
+        const resp = await fetch(url, { credentials: "include", mode: "cors" });
+
+        if (!resp.ok) {
+          if (resp.status === 401 || resp.status === 403) {
+            throw new Error("Not logged in — please log into SportyBet first, then come back here");
+          }
+          throw new Error(`SportyBet returned error ${resp.status}`);
+        }
+
+        const data = await resp.json();
+
+        if (data.bizCode === 10001 || data.bizCode === 10006) {
+          throw new Error("Not logged in — please log into SportyBet first, then come back here");
+        }
+        if (data.bizCode !== 10000) {
+          throw new Error(`SportyBet: ${data.message} (code ${data.bizCode})`);
+        }
+
+        const page = data.data;
+        totalPages = Math.ceil((page.totalNum || 0) / PAGE_SIZE) || 1;
+
+        const label = isSettled === 0 ? "pending" : "settled";
+        setStatus("⏳", `Fetching ${label} bets…`, `Page ${pageNo} of ${totalPages}`);
+        const overall = isSettled === 10
+          ? (pageNo / totalPages) * 80
+          : 80 + (pageNo / totalPages) * 15;
+        setProgress(Math.round(overall));
+
+        for (const order of (page.entityList || [])) {
+          allBets.push(parseOrder(order));
+        }
+
+        pageNo++;
+        if (pageNo <= totalPages) await sleep(250);
+      }
+    }
+
+    setProgress(98);
+    setStatus("✅", `${allBets.length} bets fetched!`, "Saving and redirecting…");
+
+    // Pass to PWA via URL hash (slim format to keep URL short)
+    const slim = allBets.map(b => ({
+      i: b.orderId, n: b.name, o: b.odds,
+      s: b.stake,   r: b.ret,  t: b.status,
+      d: b.date,    a: b.isAcca ? 1 : 0
+    }));
+
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(slim))));
+    setProgress(100);
+
+    setTimeout(() => {
+      window.location.href = "/#sync=" + encoded;
+    }, 800);
+
+  } catch (err) {
+    setStatus("❌", "Sync failed", "");
+    showError(err.message);
+    syncBtn.disabled = false;
+    syncBtn.textContent = "⚡ Try Again";
+    progressBar.style.display = "none";
+  }
+});
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function mapStatus(ws) {
+  return ws === 20 ? "win" : ws === 30 ? "loss" : (ws === 40 || ws === 50) ? "void" : "pending";
+}
+
+function parseOrder(order) {
+  const stake = parseFloat(order.totalStake)    || 0;
+  const ret   = parseFloat(order.totalWinnings) || 0;
+  const legs  = (order.selections || []).map(s => `${s.home || "?"} v ${s.away || "?"}`);
+  const name  = legs.length === 0 ? "Unknown"
+              : legs.length === 1 ? legs[0]
+              : `${legs[0]} +${legs.length - 1}`;
+  const odds  = (order.selections || []).reduce((acc, s) => {
+    const v = parseFloat(s.odds);
+    return isNaN(v) ? acc : acc * v;
+  }, 1);
+  return {
+    orderId: order.shortId || order.orderId || "",
+    name, odds: odds.toFixed(2), stake, ret,
+    status: mapStatus(order.winningStatus),
+    date:   order.createTime ? new Date(order.createTime).toISOString() : null,
+    isAcca: (order.selectionSize || 1) > 1,
+  };
+}
+
+// Auto-start if ?auto=1 in URL
+if (new URLSearchParams(location.search).get("auto") === "1") {
+  syncBtn.click();
+}
+</script>
+</body>
+</html>

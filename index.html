@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BetLens">
+<meta name="theme-color" content="#0a0b0d">
+<title>BetLens</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg:       #0a0b0d;
+  --surface:  #111318;
+  --surface2: #181b22;
+  --border:   #22262f;
+  --text:     #e8eaf0;
+  --muted:    #50556a;
+  --green:    #00e5a0;
+  --green-dim:rgba(0,229,160,0.12);
+  --red:      #ff4d6a;
+  --red-dim:  rgba(255,77,106,0.12);
+  --yellow:   #f5c518;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+body.light {
+  --bg:       #f0f2f7;
+  --surface:  #ffffff;
+  --surface2: #e8edf5;
+  --border:   #d0d6e4;
+  --text:     #0e1117;
+  --muted:    #8890a8;
+  --green:    #00a374;
+  --green-dim:rgba(0,163,116,0.1);
+  --red:      #d93252;
+  --red-dim:  rgba(217,50,82,0.1);
+  --yellow:   #c49a00;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── Layout shell ── */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-top: var(--safe-top);
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo-icon {
+  width: 28px; height: 28px;
+  background: var(--green);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-name {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.last-sync {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 57px;
+  z-index: 99;
+}
+.tab {
+  flex: 1;
+  padding: 11px 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.2s;
+}
+.tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Filters ── */
+.filters {
+  padding: 14px 16px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.filter-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.filter-row::-webkit-scrollbar { display: none; }
+.qf {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  -webkit-appearance: none;
+}
+.qf.active, .qf:active {
+  background: var(--green-dim);
+  border-color: var(--green);
+  color: var(--green);
+}
+select.qf { padding-right: 10px; }
+
+/* ── Stats grid ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.stat-card.accent { border-color: rgba(0,229,160,0.25); background: rgba(0,229,160,0.05); }
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 6px;
+}
+.stat-val {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+.stat-val.green { color: var(--green); }
+.stat-val.red   { color: var(--red); }
+.stat-val.yellow{ color: var(--yellow); }
+.stat-sub {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 4px;
+}
+.stat-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  margin-top: 4px;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+.stat-badge.up   { background: var(--green-dim); color: var(--green); }
+.stat-badge.down { background: var(--red-dim);   color: var(--red); }
+
+/* ── Chips ── */
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0 16px 12px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* ── Sparkline ── */
+.chart-section {
+  padding: 0 16px 14px;
+}
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 10px;
+}
+canvas#sparkline {
+  width: 100%;
+  height: 64px;
+  display: block;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+/* ── Bet list ── */
+.bets-section { padding: 0 16px 100px; }
+.bet-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+.bet-info { flex: 1; min-width: 0; }
+.bet-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bet-meta {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 3px;
+}
+.bet-right { text-align: right; flex-shrink: 0; }
+.bet-pnl {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+.bet-pnl.win     { color: var(--green); }
+.bet-pnl.loss    { color: var(--red); }
+.bet-pnl.pending { color: var(--yellow); }
+.bet-pnl.void    { color: var(--muted); }
+.bet-stake {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 3px;
+}
+.empty-msg {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 20px 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Empty state ── */
+#emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 32px;
+  text-align: center;
+  gap: 16px;
+}
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+.empty-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+.empty-sub {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.empty-cta {
+  margin-top: 8px;
+  padding: 12px 28px;
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ── Calendar ── */
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.cal-nav {
+  width: 34px; height: 34px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cal-nav:active { border-color: var(--green); color: var(--green); }
+.cal-month-label {
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+}
+.cal-summary {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  padding: 10px 16px 6px;
+  flex-wrap: wrap;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  padding: 10px 12px 6px;
+}
+.cal-dow {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  padding-bottom: 6px;
+}
+#calDays { display: contents; }
+.cal-day {
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  min-height: 52px;
+  padding: 6px 2px 5px;
+  transition: all 0.12s;
+}
+.cal-day.blank  { background: none; }
+.cal-day.empty  { background: var(--surface2); border-color: var(--border); }
+.cal-day.win    { background: rgba(0,229,160,0.15); border-color: rgba(0,229,160,0.4); }
+.cal-day.loss   { background: rgba(255,77,106,0.15); border-color: rgba(255,77,106,0.4); }
+.cal-day.today  { box-shadow: 0 0 0 2px var(--green); }
+.cal-num {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--muted);
+  line-height: 1;
+}
+.cal-day.win  .cal-num  { color: var(--green); }
+.cal-day.loss .cal-num  { color: var(--red); }
+.cal-pnl {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  margin-top: 4px;
+  text-align: center;
+  line-height: 1.2;
+}
+.cal-day.win  .cal-pnl { color: var(--green); }
+.cal-day.loss .cal-pnl { color: var(--red); }
+.cal-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding: 8px 0 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.cal-legend-item { display: flex; align-items: center; gap: 5px; }
+.cal-dot { width: 9px; height: 9px; border-radius: 50%; }
+.cal-dot.win  { background: var(--green); }
+.cal-dot.loss { background: var(--red); }
+.cal-dot.zero { background: var(--surface2); border: 1px solid var(--border); }
+
+/* ── Sync / Setup tab ── */
+.setup-section {
+  padding: 20px 16px 100px;
+}
+.setup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+.setup-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.setup-card-title span { font-size: 18px; }
+#bmInstructions {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+#bmInstructions strong { color: var(--text); }
+.bm-btn-wrap {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+.bm-btn {
+  display: inline-block;
+  padding: 14px 32px;
+  background: var(--green);
+  color: #000;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
+  text-decoration: none;
+  font-family: 'Space Grotesk', sans-serif;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+.bm-btn:active { opacity: 0.8; }
+.bm-note {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.6;
+}
+.danger-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--red-dim);
+  border: 1px solid rgba(255,77,106,0.3);
+  border-radius: 12px;
+  color: var(--red);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  transition: all 0.15s;
+}
+.danger-btn:active { background: rgba(255,77,106,0.25); }
+
+/* ── Bottom nav ── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0; right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding-bottom: var(--safe-bot);
+  z-index: 200;
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  gap: 4px;
+  transition: all 0.15s;
+}
+.nav-item.active { color: var(--green); }
+.nav-icon { font-size: 20px; line-height: 1; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1e2230;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  opacity: 0;
+  transition: all 0.25s;
+  z-index: 999;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+          <path d="M1 9L4.5 5L7.5 7.5L11 3" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="logo-name">BetLens</span>
+    </div>
+    <div class="header-right">
+      <button id="themeToggle" style="
+        background:var(--surface2);border:1px solid var(--border);
+        border-radius:8px;width:32px;height:32px;font-size:16px;
+        cursor:pointer;display:flex;align-items:center;justify-content:center;
+        transition:all 0.15s;
+      " title="Toggle theme">🌙</button>
+      <div class="status-dot"></div>
+      <span class="last-sync" id="lastSync">—</span>
+    </div>
+  </div>
+
+  <!-- Main content area (scrollable) -->
+  <div style="flex:1;overflow-y:auto;overflow-x:hidden;">
+
+    <!-- ── TAB: STATS ────────────────────────────────────── -->
+    <div class="tab-panel active" id="tab-stats">
+
+      <!-- Empty state -->
+      <div id="emptyState">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">No data yet</div>
+        <div class="empty-sub">Set up the sync bookmarklet to import your SportyBet history</div>
+        <button class="empty-cta" onclick="document.querySelector('[data-tab=setup]').click()">
+          Set up sync →
+        </button>
+      </div>
+
+      <!-- Dashboard content -->
+      <div id="dashContent" style="display:none">
+
+        <!-- Filters -->
+        <div class="filters">
+          <div class="filter-row">
+            <button class="qf" data-range="today">Today</button>
+            <button class="qf" data-range="7d">7 days</button>
+            <button class="qf" data-range="30d">30 days</button>
+            <button class="qf" data-range="3m">3 months</button>
+            <button class="qf" data-range="all">All time</button>
+            <select class="qf" id="monthPicker">
+              <option value="">By month</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Stats grid -->
+        <div class="stats-grid">
+          <div class="stat-card accent">
+            <div class="stat-label">Net P&amp;L</div>
+            <div class="stat-val green" id="pnl">—</div>
+            <div class="stat-badge up" id="roi">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Staked</div>
+            <div class="stat-val" id="staked">—</div>
+            <div class="stat-sub" id="bets">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Win Rate</div>
+            <div class="stat-val yellow" id="winRate">—</div>
+            <div class="stat-sub" id="wl">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Best / Worst</div>
+            <div class="stat-val green" id="bigWin" style="font-size:16px">—</div>
+            <div class="stat-sub red" id="bigLoss" style="color:var(--red)">—</div>
+          </div>
+        </div>
+
+        <!-- Chips -->
+        <div class="chips" id="chips"></div>
+
+        <!-- Sparkline -->
+        <div class="chart-section">
+          <div class="section-label">Cumulative P&amp;L</div>
+          <canvas id="sparkline"></canvas>
+        </div>
+
+        <!-- Recent bets -->
+        <div class="bets-section">
+          <div class="section-label" style="margin-bottom:10px">Recent Bets</div>
+          <div id="betList"></div>
+        </div>
+
+      </div><!-- /dashContent -->
+    </div><!-- /tab-stats -->
+
+    <!-- ── TAB: CALENDAR ─────────────────────────────────── -->
+    <div class="tab-panel" id="tab-calendar">
+      <div class="cal-header">
+        <button class="cal-nav" id="calPrev">&#8249;</button>
+        <span class="cal-month-label" id="calMonthLabel">—</span>
+        <button class="cal-nav" id="calNext">&#8250;</button>
+      </div>
+      <div class="cal-summary" id="calSummary"></div>
+      <div class="cal-grid">
+        <div class="cal-dow">Mo</div><div class="cal-dow">Tu</div>
+        <div class="cal-dow">We</div><div class="cal-dow">Th</div>
+        <div class="cal-dow">Fr</div><div class="cal-dow">Sa</div>
+        <div class="cal-dow">Su</div>
+        <div id="calDays"></div>
+      </div>
+      <div class="cal-legend">
+        <span class="cal-legend-item"><span class="cal-dot win"></span>Profit</span>
+        <span class="cal-legend-item"><span class="cal-dot loss"></span>Loss</span>
+        <span class="cal-legend-item"><span class="cal-dot zero"></span>No bets</span>
+      </div>
+    </div><!-- /tab-calendar -->
+
+    <!-- ── TAB: SETUP ─────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-setup">
+      <div class="setup-section">
+
+        <div class="setup-card">
+          <div class="setup-card-title"><span>📌</span> Sync Bookmarklet</div>
+          <div id="bmInstructions"></div>
+          <div id="bmBtnWrap" style="margin-top:16px"></div>
+        </div>
+
+        <div class="setup-card">
+          <div class="setup-card-title"><span>📤</span> Export</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Download all your bet data as a CSV file</p>
+          <button class="bm-btn" id="exportBtn" style="width:100%">↓ Export CSV</button>
+        </div>
+
+        <div class="setup-card">
+          <div class="setup-card-title"><span>🗑️</span> Clear Data</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Remove all stored bet data from this device</p>
+          <button class="danger-btn" id="clearBtn">Clear all data</button>
+        </div>
+
+      </div>
+    </div><!-- /tab-setup -->
+
+  </div><!-- /scroll area -->
+
+</div><!-- /app-shell -->
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <button class="nav-item active tab" data-tab="stats">
+    <span class="nav-icon">📊</span>Stats
+  </button>
+  <button class="nav-item tab" data-tab="calendar">
+    <span class="nav-icon">📅</span>Calendar
+  </button>
+  <button class="nav-item tab" data-tab="setup">
+    <span class="nav-icon">⚙️</span>Setup
+  </button>
+</nav>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="app.v2.js"></script>
+</body>
+</html>
