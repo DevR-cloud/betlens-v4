@@ -441,8 +441,11 @@ blMsg("BetLens: connecting…");
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 async function init() {
-  // Register service worker
+  // Unregister any old service workers, then register fresh
   if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    });
     navigator.serviceWorker.register("/sw.js").catch(console.warn);
   }
 
